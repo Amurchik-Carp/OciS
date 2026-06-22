@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ОС 2026: Интерактивное руководство</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 600px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 300px; 
+            max-height: 400px; 
+        }
+        @media (min-width: 768px) { 
+            .chart-container { 
+                height: 350px; 
+            } 
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scroll {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .task-enter {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex overflow-hidden selection:bg-indigo-200 selection:text-indigo-900">
+
+    <!-- Chosen Palette: Tech Slate (50-900) for clean backgrounds and text. Indigo (600) for primary interactive elements and highlights. Status colors: Emerald (500) for Basic level, Amber (500) for Medium level, Rose (500) for Advanced level to visually distinguish task difficulty. -->
+    
+    <!-- Application Structure Plan: The SPA uses a modern Dashboard Master-Detail architecture. 
+         - Left Sidebar: Global navigation between the analytical 'Overview' and the three difficulty 'Levels'.
+         - Main Content Area (Overview): Displays course analytics using Chart.js to help the student understand the workload distribution before diving in.
+         - Main Content Area (Levels): A split-pane design. The left pane lists tasks for the selected level. The right pane displays the interactive details of the selected task. This prevents constant page switching, keeping the user in a continuous "flow" state for studying. Search functionality is global and overlays the current view.
+         This structure prioritizes quick access to specific commands while maintaining a clear mental model of the entire 25-task curriculum. -->
+         
+    <!-- Visualization & Content Choices: 
+         1. Report Info: Overall distribution of 25 tasks across 3 difficulty levels. -> Goal: Inform/Proportions. -> Viz: Donut Chart. -> Interaction: Hover tooltips showing exact counts. -> Justification: Gives students an immediate sense of the exam's focus areas. -> Library: Chart.js Canvas. NO SVG used.
+         2. Report Info: Task categorization by technological domain (Linux FS, Bash, Windows, etc.). -> Goal: Organize/Compare. -> Viz: Bar Chart. -> Interaction: Hover tooltips. -> Justification: Clearly illustrates the heavy emphasis on Linux command-line skills vs Windows. -> Library: Chart.js Canvas. NO SVG used.
+         3. Report Info: Specific task commands, outputs, and explanations. -> Goal: Inform/Interact. -> Viz: Syntax-highlighted text blocks within a Master-Detail layout. -> Interaction: Click task to view, "Copy Code" button for terminal practice. -> Justification: Best for precise technical reading and practical application. -> Method: HTML/Tailwind + Vanilla JS. NO Mermaid used. -->
+         
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <aside class="w-20 md:w-64 bg-slate-900 text-slate-300 flex flex-col transition-all duration-300 z-20 shrink-0 shadow-xl">
+        <div class="h-16 flex items-center justify-center md:justify-start md:px-6 border-b border-slate-700 bg-slate-950">
+            <span class="text-2xl text-indigo-400 font-black tracking-tighter cursor-pointer" onclick="app.navigate('overview')">&#128187; <span class="hidden md:inline text-white tracking-normal font-bold text-lg ml-2">ОС 2026 Guide</span></span>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-6 flex flex-col gap-2">
+            <button onclick="app.navigate('overview')" id="nav-overview" class="flex items-center px-0 justify-center md:justify-start md:px-6 py-3 w-full hover:bg-slate-800 hover:text-white transition-colors border-l-4 border-indigo-500 bg-slate-800 text-white" title="Аналитика курса">
+                <span class="text-xl">&#128202;</span>
+                <span class="hidden md:block ml-3 font-medium text-sm">Аналитика курса</span>
+            </button>
+            
+            <div class="hidden md:block pt-6 pb-2 px-6 text-xs font-bold text-slate-500 uppercase tracking-widest">Практикум</div>
+            
+            <button onclick="app.navigate('level', 1)" id="nav-level-1" class="flex items-center px-0 justify-center md:justify-start md:px-6 py-3 w-full hover:bg-slate-800 hover:text-white transition-colors border-l-4 border-transparent" title="Базовый уровень">
+                <span class="text-xl text-emerald-400">&#128216;</span>
+                <span class="hidden md:block ml-3 font-medium text-sm">Базовый (Легкий)</span>
+            </button>
+            
+            <button onclick="app.navigate('level', 2)" id="nav-level-2" class="flex items-center px-0 justify-center md:justify-start md:px-6 py-3 w-full hover:bg-slate-800 hover:text-white transition-colors border-l-4 border-transparent" title="Средний уровень">
+                <span class="text-xl text-amber-400">&#128213;</span>
+                <span class="hidden md:block ml-3 font-medium text-sm">Средний</span>
+            </button>
+            
+            <button onclick="app.navigate('level', 3)" id="nav-level-3" class="flex items-center px-0 justify-center md:justify-start md:px-6 py-3 w-full hover:bg-slate-800 hover:text-white transition-colors border-l-4 border-transparent" title="Продвинутый уровень">
+                <span class="text-xl text-rose-400">&#128214;</span>
+                <span class="hidden md:block ml-3 font-medium text-sm">Продвинутый</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-700 hidden md:block">
+            <p class="text-xs text-slate-500 leading-tight">Подготовка к экзамену<br>Операционные системы</p>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0 bg-slate-50 relative">
+        
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 z-10 shrink-0">
+            <div>
+                <h1 id="view-title" class="text-xl sm:text-2xl font-bold text-slate-800 truncate">Обзор курса</h1>
+            </div>
+            <div class="w-full max-w-xs ml-4 relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-lg">&#128269;</span>
+                <input type="text" id="search-input" class="w-full bg-slate-100 border-none rounded-full py-2 pl-10 pr-4 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm outline-none" placeholder="Поиск команд и заданий...">
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-hidden relative">
+            
+            <div id="view-overview" class="absolute inset-0 overflow-y-auto p-4 sm:p-8">
+                <div class="max-w-6xl mx-auto space-y-8">
+                    
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+                        <h2 class="text-2xl font-bold text-slate-900 mb-3 flex items-center"><span class="text-3xl mr-3">&#127919;</span> Аналитика Экзаменационного Комплекта</h2>
+                        <p class="text-slate-600 leading-relaxed text-lg">
+                            Добро пожаловать в интерактивный тренажер по дисциплине «Операционные системы и среды» (2026). Данный дашборд визуализирует структуру практической части экзамена, состоящей из 25 заданий. Здесь вы можете проанализировать распределение нагрузки и определить приоритетные темы для изучения.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col">
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">Сложность заданий</h3>
+                            <p class="text-sm text-slate-500 text-center mb-6">Распределение 25 заданий по трем уровням подготовки.</p>
+                            <div class="chart-container flex-1">
+                                <canvas id="difficultyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col">
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 text-center">Технологический фокус</h3>
+                            <p class="text-sm text-slate-500 text-center mb-6">Категоризация заданий по изучаемым подсистемам и инструментам.</p>
+                            <div class="chart-container flex-1">
+                                <canvas id="topicChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-600 rounded-2xl shadow-lg p-8 text-center relative overflow-hidden">
+                        <div class="relative z-10">
+                            <h3 class="text-2xl font-bold text-white mb-4">Готовы приступить к практике?</h3>
+                            <p class="text-indigo-100 mb-6 max-w-2xl mx-auto">Вся необходимая теория, готовые команды для терминала и подробные объяснения собраны в интерактивных разделах. Рекомендуем начать с базового уровня для закрепления фундаментальных навыков.</p>
+                            <button onclick="app.navigate('level', 1)" class="bg-white text-indigo-700 font-bold py-3 px-8 rounded-full hover:bg-slate-50 hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                                Начать обучение &#10140;
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="view-level" class="absolute inset-0 flex flex-col md:flex-row hidden">
+                
+                <div class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-slate-200 flex flex-col h-1/2 md:h-full z-10 shrink-0 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+                    <div class="p-5 border-b border-slate-100 bg-slate-50">
+                        <h2 id="level-title-sidebar" class="font-bold text-slate-800 text-lg mb-1">Уровень</h2>
+                        <p id="level-desc-sidebar" class="text-xs text-slate-500 leading-tight">Описание уровня</p>
+                    </div>
+                    <ul id="task-list" class="flex-1 overflow-y-auto hide-scroll divide-y divide-slate-50">
+                    </ul>
+                </div>
+
+                <div class="w-full md:w-2/3 lg:w-3/4 bg-slate-50 flex flex-col h-1/2 md:h-full overflow-hidden relative">
+                    
+                    <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                        <div class="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mb-6 shadow-inner text-5xl">
+                            &#128072;
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-700 mb-2">Выберите задание</h3>
+                        <p class="text-slate-500 max-w-md">Используйте список слева, чтобы открыть подробное условие задачи, консольные команды, ожидаемый результат и разбор логики решения.</p>
+                    </div>
+
+                    <div id="task-detail" class="absolute inset-0 overflow-y-auto p-4 sm:p-8 hidden bg-slate-50">
+                        <div class="max-w-4xl mx-auto space-y-6 pb-20">
+                            
+                            <div class="flex items-center justify-between mb-2">
+                                <span id="task-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"></span>
+                                <span class="text-slate-400 text-sm font-mono" id="task-id-display"></span>
+                            </div>
+
+                            <h2 id="task-title" class="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">Название задания</h2>
+                            
+                            <div class="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Условие</h4>
+                                <p id="task-condition" class="text-slate-700 text-lg leading-relaxed"></p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-end">
+                                    <h4 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                                        <span class="text-xl mr-2">&#128421;</span> Команды терминала
+                                    </h4>
+                                    <button onclick="app.copyCode()" class="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 py-1.5 px-3 rounded-lg transition-colors flex items-center">
+                                        <span class="mr-1">&#128203;</span> <span id="copy-text">Копировать</span>
+                                    </button>
+                                </div>
+                                <div class="bg-slate-900 rounded-xl p-5 shadow-inner overflow-x-auto border border-slate-800">
+                                    <pre><code id="task-commands" class="font-mono text-sm text-emerald-400 leading-loose block min-w-max"></code></pre>
+                                </div>
+                            </div>
+
+                            <div id="output-container" class="space-y-4">
+                                <h4 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                                    <span class="text-xl mr-2">&#128196;</span> Ожидаемый вывод
+                                </h4>
+                                <div class="bg-slate-100 border border-slate-200 rounded-xl p-5 overflow-x-auto shadow-inner">
+                                    <pre><code id="task-output" class="font-mono text-sm text-slate-600 leading-relaxed block min-w-max"></code></pre>
+                                </div>
+                            </div>
+
+                            <div class="bg-amber-50 border border-amber-100 rounded-xl p-6 sm:p-8 mt-8">
+                                <h4 class="text-sm font-bold text-amber-800 uppercase tracking-widest mb-4 flex items-center">
+                                    <span class="text-2xl mr-2">&#128161;</span> Разбор для новичков
+                                </h4>
+                                <div id="task-explanation" class="text-slate-800 leading-relaxed space-y-4"></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="search-overlay" class="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 hidden flex-col">
+                <div class="p-4 sm:p-8 border-b border-slate-200 flex justify-between items-center bg-white shadow-sm">
+                    <h2 class="text-xl font-bold text-slate-800">Результаты поиска</h2>
+                    <button onclick="app.closeSearch()" class="text-slate-500 hover:text-rose-500 text-2xl font-bold transition-colors w-10 h-10 flex items-center justify-center rounded-full hover:bg-rose-50">&times;</button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 sm:p-8">
+                    <div class="max-w-4xl mx-auto">
+                        <ul id="search-results-list" class="space-y-3">
+                        </ul>
+                        <div id="search-empty" class="hidden text-center py-20 text-slate-500">
+                            <span class="text-6xl block mb-4">&#128533;</span>
+                            <p class="text-lg">По запросу ничего не найдено.</p>
+                            <p class="text-sm mt-2">Попробуйте использовать другие ключевые слова (например: mkdir, bash, права).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const tasksDatabase = [
+            { id: 3, level: 1, title: "Задание 3. Создание дерева директорий Linux", condition: "В домашнем каталоге создать структуру exam/os/linux/files, затем перейти в конечную директорию и вывести полный путь к ней.", commands: "# 1. Создаем всю цепочку папок сразу\nmkdir -p ~/exam/os/linux/files\n\n# 2. Заходим в созданную конечную папку\ncd ~/exam/os/linux/files\n\n# 3. Выводим полный путь на экран\npwd", output: "/home/student/exam/os/linux/files", explanation: "<ul><li class='mb-2'><b>Директория</b> — профессиональное название папки.</li><li class='mb-2'><code>mkdir</code> (make directory) — создаёт папки.</li><li class='mb-2'>Ключ <code>-p</code> — позволяет создать всю цепочку папок за один раз, предотвращая ошибку отсутствия родительского каталога.</li><li class='mb-2'><code>~</code> (тильда) — короткое имя личной домашней папки.</li><li class='mb-2'><code>cd</code> — смена папки, <code>pwd</code> — печать текущего пути.</li></ul>" },
+            { id: 4, level: 1, title: "Задание 4. Работа с каталогами", condition: "Создать каталог practice, внутри него docs, tmp и backup. Переименовать tmp в temp, удалить пустой temp. Показать содержимое practice.", commands: "cd ~\nmkdir -p practice/docs practice/tmp practice/backup\nmv practice/tmp practice/temp\nrmdir practice/temp\nls -l practice", output: "total 8\ndrwxr-xr-x 2 student student 4096 Jun 22 10:00 backup\ndrwxr-xr-x 2 student student 4096 Jun 22 10:00 docs", explanation: "<ul><li class='mb-2'><code>mv</code> (move) — переносит или переименовывает файлы/папки.</li><li class='mb-2'><code>rmdir</code> — безопасно удаляет только <b>абсолютно пустые</b> папки.</li><li class='mb-2'><code>ls -l</code> — выводит содержимое подробным списком (с правами и датами).</li></ul>" },
+            { id: 5, level: 1, title: "Задание 5. Создание и определение типа файлов", condition: "Создать text.txt, empty.log, script.sh. В text.txt записать текст. Определить тип каждого файла.", commands: "touch empty.log script.sh\necho -e \"Привет, мир!\\nЭто вторая строка.\\nКонец файла.\" > text.txt\nfile text.txt empty.log script.sh", output: "text.txt:  UTF-8 Unicode text\nempty.log: empty\nscript.sh: empty", explanation: "<ul><li class='mb-2'><code>touch</code> — быстро создает пустые файлы.</li><li class='mb-2'><code>echo</code> выводит текст, а знак <code>></code> перенаправляет этот текст внутрь файла, затирая старое содержимое.</li><li class='mb-2'><code>file</code> — определяет реальный тип файла по содержимому, игнорируя расширения (в Linux расширения не имеют технического значения).</li></ul>" },
+            { id: 7, level: 1, title: "Задание 7. Просмотр содержимого файла", condition: "Создать файл 15 строк. Вывести весь файл, первые 5 строк, последние 5 строк. Просмотр через less.", commands: "for i in {1..15}; do echo \"Это строка номер $i\" >> lines.txt; done\ncat lines.txt\nhead -n 5 lines.txt\ntail -n 5 lines.txt\nless lines.txt", output: "", explanation: "<ul><li class='mb-2'><code>>></code> — дописывает текст в конец файла.</li><li class='mb-2'><code>cat</code> — выводит всё содержимое разом.</li><li class='mb-2'><code>head</code> и <code>tail</code> — показывают только начало или конец (хвост) файла соответственно.</li><li class='mb-2'><code>less</code> — открывает интерактивный постраничный просмотр (выход клавишей <b>q</b>).</li></ul>" },
+            { id: 9, level: 1, title: "Задание 9. Работа со справочной системой", condition: "Найти назначение mkdir и ключ для вложенных каталогов. Составить пример.", commands: "man mkdir", output: "", explanation: "<ul><li class='mb-2'><code>man</code> (manual) — открывает системное руководство по команде.</li><li class='mb-2'>Внутри справки поиск вызывается нажатием <code>/</code>. Нажатие <b>q</b> закрывает справку.</li></ul>" },
+            { id: 10, level: 1, title: "Задание 10. Ключи и аргументы команд ls", condition: "Выполнить варианты просмотра: обычный, подробный, скрытые файлы, всё вместе.", commands: "ls\nls -l\nls -a\nls -la", output: "", explanation: "<ul><li class='mb-2'>Команды состоят из имени (ls), ключей (с дефисом) и аргументов.</li><li class='mb-2'><code>-l</code> — длинный (long) формат таблицы.</li><li class='mb-2'><code>-a</code> — показать скрытые файлы (в Linux скрытые файлы начинаются с точки, например .bashrc).</li></ul>" },
+            { id: 14, level: 1, title: "Задание 14. Определение текущего пользователя", condition: "Определить имя, UID, основную и дополнительные группы пользователя.", commands: "id", output: "uid=1000(student) gid=1000(student) groups=1000(student),27(sudo)", explanation: "<ul><li class='mb-2'><code>id</code> показывает системный паспорт.</li><li class='mb-2'><b>UID</b> — цифровой номер пользователя (root всегда 0).</li><li class='mb-2'>Наличие группы <code>sudo</code> означает права на выполнение административных команд.</li></ul>" },
+            { id: 23, level: 1, title: "Задание 23. Информация о системе Linux", condition: "Определить имя пользователя, ПК, версию ядра, каталог и место на дисках.", commands: "whoami\nhostname\nuname -r\npwd\ndf -h /", output: "", explanation: "<ul><li class='mb-2'>Набор команд для быстрого сбора системной аналитики.</li><li class='mb-2'><code>df -h</code> показывает место на диске. Ключ <code>-h</code> (human-readable) переводит байты в понятные гигабайты и мегабайты.</li></ul>" },
+            
+            { id: 6, level: 2, title: "Задание 6. Копирование, перемещение, удаление", condition: "Создать файл, скопировать в backup, переместить оригинал в exam_archive. Удалить копию.", commands: "mkdir -p ~/practice/docs ~/practice/backup ~/practice/exam_archive\ncd ~/practice\ntouch docs/report.txt\ncp docs/report.txt backup/\nmv docs/report.txt exam_archive/\nrm backup/report.txt\nls -R", output: ".:\nbackup  docs  exam_archive\n./backup:\n./docs:\n./exam_archive:\nreport.txt", explanation: "<ul><li class='mb-2'><code>cp</code> — копирует (дублирует).</li><li class='mb-2'><code>mv</code> — перемещает (удаляет из старого места).</li><li class='mb-2'><code>rm</code> — удаляет навсегда (мимо корзины).</li><li class='mb-2'><code>ls -R</code> — показывает дерево всех вложенных папок.</li></ul>" },
+            { id: 8, level: 2, title: "Задание 8. Наблюдение за изменением файла", condition: "Запустить наблюдение за файлом через tail -f, в другом окне добавить строки.", commands: "# Терминал 1:\ntouch log.txt\ntail -f log.txt\n\n# Терминал 2:\necho \"Новая строка\" >> log.txt", output: "", explanation: "<ul><li class='mb-2'>Ключ <code>-f</code> (follow) заставляет команду не закрываться, а в реальном времени выводить новые строки, дописываемые другими программами в файл.</li><li class='mb-2'>Остановка процесса слежения — комбинация <code>Ctrl + C</code>.</li></ul>" },
+            { id: 11, level: 2, title: "Задание 11. Права доступа в числовой форме", condition: "Назначить файлу права 644, 600, 755. Вывести и объяснить.", commands: "touch access.txt\nchmod 644 access.txt\nls -l access.txt\nchmod 600 access.txt\nls -l access.txt\nchmod 755 access.txt\nls -l access.txt", output: "", explanation: "<ul><li class='mb-2'>Права: Владелец / Группа / Остальные. Баллы: 4 (чтение), 2 (запись), 1 (запуск).</li><li class='mb-2'><code>644</code>: Владелец читает и пишет (4+2), остальные только читают (4).</li><li class='mb-2'><code>600</code>: Полный приват. Доступ только владельцу.</li><li class='mb-2'><code>755</code>: Исполняемый файл (программа). Все могут запускать.</li></ul>" },
+            { id: 12, level: 2, title: "Задание 12. Права доступа в символьной форме", condition: "Добавить группе право записи, убрать право выполнения для остальных пользователей.", commands: "mkdir shared\nchmod g+w shared\nchmod o-x shared\nls -ld shared", output: "", explanation: "<ul><li class='mb-2'>Символы: <code>u</code> (user), <code>g</code> (group), <code>o</code> (others).</li><li class='mb-2'><code>g+w</code>: группе (g) прибавить (+) запись (w).</li><li class='mb-2'><code>o-x</code>: остальным (o) запретить (-) выполнение/вход (x).</li></ul>" },
+            { id: 17, level: 2, title: "Задание 17. Работа с vi/vim", condition: "Создать файл, ввести текст, сохранить. Открыть, удалить строку, сохранить.", commands: "# В терминале:\nvim answer.txt\n\n# Внутри редактора:\n# Нажать 'i' (режим ввода), написать текст, нажать 'Esc'.\n# Ввести :wq и нажать Enter.\n# Снова открыть файл, навести курсор, нажать 'dd' (удаление строки).\n# Ввести :wq", output: "", explanation: "<ul><li class='mb-2'><code>Vim</code> имеет разные режимы. По умолчанию он в <b>командном</b> (кнопки выполняют команды вроде удаления <code>dd</code>).</li><li class='mb-2'>Для ввода текста нужен режим <b>вставки</b> (клавиша <code>i</code>).</li><li class='mb-2'>Сохранение: <code>:wq</code> (write and quit).</li></ul>" },
+            { id: 18, level: 2, title: "Задание 18. Простой shell-скрипт", condition: "Создать скрипт, выводящий приветствие и переданный аргумент. Дать права и запустить.", commands: "echo '#!/bin/bash' > hello.sh\necho 'echo \"Приветствую, $1!\"' >> hello.sh\nchmod +x hello.sh\n./hello.sh Максим", output: "Приветствую, Максим!", explanation: "<ul><li class='mb-2'><code>#!/bin/bash</code> (шебанг) — указывает системе интерпретатор скрипта.</li><li class='mb-2'><code>$1</code> — переменная, заменяемая на первое слово, написанное после имени скрипта при запуске.</li><li class='mb-2'><code>chmod +x</code> делает файл исполняемой программой.</li></ul>" },
+            { id: 22, level: 2, title: "Задание 22. Просмотр процессов", condition: "Запустить sleep 300 в фоне, найти процесс, принудительно завершить по PID.", commands: "sleep 300 &\nps aux | grep \"sleep\"\nkill [PID_ИЗ_ПРЕДЫДУЩЕЙ_КОМАНДЫ]", output: "", explanation: "<ul><li class='mb-2'>Символ <code>&</code> запускает команду в фоне, освобождая терминал.</li><li class='mb-2'><code>ps aux</code> показывает все процессы (PID - уникальный номер).</li><li class='mb-2'><code>kill</code> принудительно выгружает процесс из памяти компьютера.</li></ul>" },
+            { id: 24, level: 2, title: "Задание 24. Настройка Windows", condition: "В Windows создать локального пользователя, добавить в группу Пользователи.", commands: ":: Выполнить в CMD от имени Администратора:\nnet user student_exam Pa$$w0rd /add\nnet localgroup \"Пользователи\" student_exam /add\nnet user student_exam", output: "", explanation: "<ul><li class='mb-2'>Утилита <code>net</code> — консольный инструмент управления сетями и аккаунтами в Windows.</li><li class='mb-2'>Группа «Пользователи» (Users) позволяет безопасно работать на ПК без прав на изменение системных настроек.</li></ul>" },
+            { id: 25, level: 2, title: "Задание 25. Права доступа в Windows", condition: "Настроить права папки ExamShare: только чтение файлов, без изменения.", commands: ":: Выполняется в графическом интерфейсе:\n:: Свойства папки -> Безопасность -> Изменить -> Добавить (student_exam)\n:: Оставить галочки \"Разрешить\":\n:: - Чтение и выполнение\n:: - Список содержимого\n:: - Чтение\n:: Галочки \"Запись\" и \"Изменение\" снять.", output: "", explanation: "<ul><li class='mb-2'>Оставленные галочки дают право входить в папку и копировать файлы.</li><li class='mb-2'>Снятие галочек записи запрещает удаление, переименование или редактирование документов внутри. Идеально для расшаривания методичек.</li></ul>" },
+            
+            { id: 1, level: 3, title: "Задание 1. Работа с ВООТ-меню", condition: "Определить клавишу входа в BIOS и BOOT-меню. Выбрать USB-загрузку без изменения настроек ОС.", commands: ":: Выполняется при включении ПК:\n:: 1. Включить ПК, быстро нажимать Del/F2 (BIOS) или F12 (Boot Menu).\n:: 2. В BIOS найти вкладку Boot -> Boot Option Priorities.\n:: 3. Для разовой загрузки с флешки: вызвать F12, выбрать USB, нажать Enter.", output: "", explanation: "<ul><li class='mb-2'><b>BIOS/UEFI</b> — микропрограмма материнской платы, запускающая ПК.</li><li class='mb-2'><b>Boot Menu</b> позволяет выбрать диск для текущей загрузки единоразово, не сбивая постоянный порядок загрузки Windows на жестком диске.</li></ul>" },
+            { id: 2, level: 3, title: "Задание 2. Диагностика загрузки", condition: "Составить алгоритм первичных проверок: питание, накопитель, порядок, носитель, BIOS.", commands: ":: Алгоритм диагностики:\n:: 1. Питание (кулеры, диоды).\n:: 2. Изображение (кабель монитора).\n:: 3. Ошибки POST (текст на экране, писки спикера).\n:: 4. Извлечение забытых USB-флешек.\n:: 5. Детекция жесткого диска в BIOS.\n:: 6. Порядок загрузки в BIOS.\n:: 7. Восстановление загрузчика (с Live-USB).", output: "", explanation: "<ul><li class='mb-2'>Большинство проблем загрузки — физические (отошел кабель) или логические (ПК пытается загрузиться с забытой рабочей флешки). Алгоритм позволяет исключить простые причины до похода в сервис.</li></ul>" },
+            { id: 13, level: 3, title: "Задание 13. Владелец и группа", condition: "Создать файл, изменить его группу и владельца на системные (через права администратора).", commands: "touch group_file.txt\nsudo chgrp games group_file.txt\nsudo chown bin group_file.txt\nls -l group_file.txt", output: "-rw-r--r-- 1 bin games 0 Jun 22 10:20 group_file.txt", explanation: "<ul><li class='mb-2'><code>sudo</code> (Superuser Do) — выполнение от имени главного администратора (root). Обычный пользователь не может передавать файлы чужим группам в целях безопасности.</li><li class='mb-2'><code>chgrp</code> меняет группу, <code>chown</code> меняет пользователя-владельца.</li></ul>" },
+            { id: 15, level: 3, title: "Задание 15. Создание пользователя", condition: "Создать пользователя, задать домашний каталог, пароль, проверить в passwd, удалить.", commands: "sudo useradd -m -s /bin/bash student_exam\nsudo passwd student_exam\ngrep \"student_exam\" /etc/passwd\nsudo userdel -r student_exam", output: "student_exam:x:1001:1001::/home/student_exam:/bin/bash", explanation: "<ul><li class='mb-2'><code>useradd -m</code> принудительно создает папку в /home.</li><li class='mb-2'><code>/etc/passwd</code> — текстовая база всех пользователей ОС.</li><li class='mb-2'><code>userdel -r</code> — удаляет пользователя и рекурсивно стирает его папку, не оставляя мусора на диске.</li></ul>" },
+            { id: 16, level: 3, title: "Задание 16. Работа с группами Linux", condition: "Создать группу, добавить текущего пользователя, проверить членство, удалить группу.", commands: "sudo groupadd examgroup\nsudo usermod -aG examgroup $USER\nnewgrp examgroup\ngroups\nsudo groupdel examgroup", output: "", explanation: "<ul><li class='mb-2'><code>usermod -aG</code> — критически важная комбинация (append group). Она аккуратно добавляет новую группу к вашим старым. Использование ключа -G без -a сотрет вас из всех старых групп (включая sudo).</li></ul>" },
+            { id: 19, level: 3, title: "Задание 19. Цикл for в Bash", condition: "Скрипт, создающий каталоги task1...task5 в цикле, и выводящий их список.", commands: "echo '#!/bin/bash\nfor i in {1..5}\ndo\n  mkdir \"task$i\"\ndone\nls -d task*' > create_dirs.sh\nchmod +x create_dirs.sh\n./create_dirs.sh", output: "task1  task2  task3  task4  task5", explanation: "<ul><li class='mb-2'>Цикл автоматизирует однотипные команды. Диапазон <code>{1..5}</code> заставляет цикл выполнить код 5 раз.</li><li class='mb-2'>Переменная <code>$i</code> выступает счетчиком, подставляя текущую цифру в имя папки.</li></ul>" },
+            { id: 20, level: 3, title: "Задание 20. Проверка аргумента Bash", condition: "Скрипт, проверяющий наличие переданного файла (if-else).", commands: "echo '#!/bin/bash\nif [ -z \"$1\" ]; then\n  echo \"Ошибка: нет аргумента\"\n  exit 1\nfi\nif [ -f \"$1\" ]; then\n  echo \"Файл найден\"\nelse\n  echo \"Файл не найден\"\nfi' > check_file.sh\nchmod +x check_file.sh\n./check_file.sh test.txt", output: "", explanation: "<ul><li class='mb-2'>Конструкция <code>if-else</code> позволяет скрипту принимать логические решения.</li><li class='mb-2'><code>[ -z \"$1\" ]</code> проверяет пустую строку (забыли аргумент).</li><li class='mb-2'><code>[ -f \"$1\" ]</code> проверяет, существует ли физически на диске такой обычный файл (file).</li></ul>" },
+            { id: 21, level: 3, title: "Задание 21. Резервное копирование", condition: "Скрипт, копирующий все .txt файлы в каталог backup. Глушение ошибок.", commands: "echo '#!/bin/bash\nmkdir -p backup\ncp *.txt backup/ 2>/dev/null\necho \"Готово\"\nls -l backup' > backup_txt.sh\nchmod +x backup_txt.sh\n./backup_txt.sh", output: "", explanation: "<ul><li class='mb-2'><code>*.txt</code> — маска, выбирающая все текстовые файлы в папке.</li><li class='mb-2'>Трюк <code>2&gt;/dev/null</code> перенаправляет поток системных ошибок в виртуальную черную дыру. Если текстовых файлов нет, cp не вывалит красную ошибку в терминал, и скрипт отработает тихо.</li></ul>" }
+        ];
+
+        const levelsMeta = {
+            1: { title: "Базовый (Легкий)", desc: "Фундаментальные команды для навигации, создания файлов и папок, работа со встроенной справкой Linux.", icon: "&#128216;", color: "text-emerald-500", bg: "bg-emerald-500", lightBg: "bg-emerald-50" },
+            2: { title: "Средний", desc: "Управление процессами, глубокая настройка прав доступа (chmod/chown) и написание простых автоматизирующих Bash-скриптов.", icon: "&#128213;", color: "text-amber-500", bg: "bg-amber-500", lightBg: "bg-amber-50" },
+            3: { title: "Продвинутый", desc: "Системное администрирование: пользователи, группы, диагностика BIOS/UEFI, сложные скрипты с логическим ветвлением.", icon: "&#128214;", color: "text-rose-500", bg: "bg-rose-500", lightBg: "bg-rose-50" }
+        };
+
+        const app = {
+            state: {
+                view: 'overview',
+                level: null,
+                taskId: null,
+                chartsRendered: false
+            },
+
+            init() {
+                // Intro setup
+                this.navigate('overview');
+                
+                // Search listener
+                document.getElementById('search-input').addEventListener('input', (e) => {
+                    this.handleSearch(e.target.value.toLowerCase().trim());
+                });
+            },
+
+            navigate(view, param = null) {
+                this.state.view = view;
+                this.closeSearch();
+                document.getElementById('search-input').value = '';
+
+                // Reset Nav Styles
+                ['overview', 'level-1', 'level-2', 'level-3'].forEach(id => {
+                    const el = document.getElementById(`nav-${id}`);
+                    el.classList.remove('bg-slate-800', 'text-white', 'border-indigo-500');
+                    el.classList.add('border-transparent');
+                });
+
+                document.getElementById('view-overview').classList.add('hidden');
+                document.getElementById('view-level').classList.add('hidden');
+
+                if (view === 'overview') {
+                    document.getElementById('nav-overview').classList.add('bg-slate-800', 'text-white', 'border-indigo-500');
+                    document.getElementById('view-title').innerText = 'Обзор курса';
+                    document.getElementById('view-overview').classList.remove('hidden');
+                    if (!this.state.chartsRendered) this.renderCharts();
+                } else if (view === 'level') {
+                    this.state.level = param;
+                    document.getElementById(`nav-level-${param}`).classList.add('bg-slate-800', 'text-white', 'border-indigo-500');
+                    document.getElementById('view-level').classList.remove('hidden');
+                    
+                    const meta = levelsMeta[param];
+                    document.getElementById('view-title').innerText = `Практика: ${meta.title}`;
+                    document.getElementById('level-title-sidebar').innerHTML = `<span class="${meta.color} mr-1">${meta.icon}</span> ${meta.title}`;
+                    document.getElementById('level-desc-sidebar').innerText = meta.desc;
+                    
+                    this.renderTaskList();
+                    
+                    // Select first task by default if none selected
+                    const firstTask = tasksDatabase.find(t => t.level === param);
+                    if(firstTask) this.selectTask(firstTask.id);
+                }
+            },
+
+            renderTaskList() {
+                const list = document.getElementById('task-list');
+                const tasks = tasksDatabase.filter(t => t.level === this.state.level);
+                
+                list.innerHTML = tasks.map(task => `
+                    <li>
+                        <button onclick="app.selectTask(${task.id})" id="task-btn-${task.id}" class="w-full text-left p-4 hover:bg-white transition-colors border-l-4 ${this.state.taskId === task.id ? 'border-indigo-500 bg-white' : 'border-transparent'}">
+                            <span class="font-semibold text-slate-700 text-sm block leading-tight">${task.title}</span>
+                        </button>
+                    </li>
+                `).join('');
+            },
+
+            selectTask(id) {
+                this.state.taskId = id;
+                this.renderTaskList(); // Update active state
+
+                const task = tasksDatabase.find(t => t.id === id);
+                if(!task) return;
+
+                document.getElementById('empty-state').classList.add('hidden');
+                const detailView = document.getElementById('task-detail');
+                detailView.classList.remove('hidden');
+                
+                // Animate entry
+                detailView.classList.remove('task-enter');
+                void detailView.offsetWidth; // trigger reflow
+                detailView.classList.add('task-enter');
+
+                document.getElementById('task-title').innerText = task.title;
+                document.getElementById('task-condition').innerText = task.condition;
+                document.getElementById('task-commands').innerText = task.commands;
+                
+                const outContainer = document.getElementById('output-container');
+                if (task.output) {
+                    outContainer.classList.remove('hidden');
+                    document.getElementById('task-output').innerText = task.output;
+                } else {
+                    outContainer.classList.add('hidden');
+                }
+                
+                document.getElementById('task-explanation').innerHTML = task.explanation;
+                
+                const badge = document.getElementById('task-badge');
+                const meta = levelsMeta[task.level];
+                badge.innerText = `Уровень ${task.level}: ${meta.title}`;
+                badge.className = `px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${meta.lightBg} ${meta.color}`;
+                document.getElementById('task-id-display').innerText = `ID: ${task.id}`;
+            },
+
+            handleSearch(query) {
+                const overlay = document.getElementById('search-overlay');
+                const list = document.getElementById('search-results-list');
+                const empty = document.getElementById('search-empty');
+
+                if (query.length < 2) {
+                    this.closeSearch();
+                    return;
+                }
+
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+
+                const results = tasksDatabase.filter(t => 
+                    t.title.toLowerCase().includes(query) || 
+                    t.commands.toLowerCase().includes(query) ||
+                    t.explanation.toLowerCase().includes(query)
+                );
+
+                if (results.length > 0) {
+                    list.classList.remove('hidden');
+                    empty.classList.add('hidden');
+                    list.innerHTML = results.map(t => {
+                        const meta = levelsMeta[t.level];
+                        return `
+                        <li>
+                            <button onclick="app.navigateAndSelect(${t.level}, ${t.id})" class="w-full text-left p-5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors flex flex-col sm:flex-row sm:items-center gap-4">
+                                <div class="shrink-0">
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold ${meta.lightBg} ${meta.color} whitespace-nowrap">Ур. ${t.level}</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-800">${t.title}</h4>
+                                    <p class="text-sm text-slate-500 mt-1 truncate max-w-xl">${t.condition}</p>
+                                </div>
+                            </button>
+                        </li>
+                    `}).join('');
+                } else {
+                    list.classList.add('hidden');
+                    empty.classList.remove('hidden');
+                }
+            },
+
+            closeSearch() {
+                document.getElementById('search-overlay').classList.add('hidden');
+                document.getElementById('search-overlay').classList.remove('flex');
+            },
+
+            navigateAndSelect(level, taskId) {
+                this.navigate('level', level);
+                setTimeout(() => this.selectTask(taskId), 50);
+                document.getElementById('search-input').value = '';
+            },
+
+            copyCode() {
+                const code = document.getElementById('task-commands').innerText;
+                navigator.clipboard.writeText(code).then(() => {
+                    const span = document.getElementById('copy-text');
+                    const btn = span.parentElement;
+                    span.innerText = 'Скопировано';
+                    btn.classList.add('bg-emerald-100', 'text-emerald-700');
+                    btn.classList.remove('bg-indigo-50', 'text-indigo-600');
+                    setTimeout(() => {
+                        span.innerText = 'Копировать';
+                        btn.classList.remove('bg-emerald-100', 'text-emerald-700');
+                        btn.classList.add('bg-indigo-50', 'text-indigo-600');
+                    }, 2000);
+                });
+            },
+
+            renderCharts() {
+                this.state.chartsRendered = true;
+                Chart.defaults.font.family = "'Segoe UI', Roboto, sans-serif";
+                Chart.defaults.color = '#64748b';
+
+                // Chart 1: Difficulty Donut
+                const diffCounts = { 1: 0, 2: 0, 3: 0 };
+                tasksDatabase.forEach(t => diffCounts[t.level]++);
+                
+                new Chart(document.getElementById('difficultyChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Базовый (8)', 'Средний (9)', 'Продвинутый (8)'],
+                        datasets: [{
+                            data: [diffCounts[1], diffCounts[2], diffCounts[3]],
+                            backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                padding: 12,
+                                callbacks: { label: (ctx) => ` Заданий: ${ctx.raw}` }
+                            }
+                        }
+                    }
+                });
+
+                // Chart 2: Topics Bar (Manual estimation based on course content)
+                new Chart(document.getElementById('topicChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Linux: Файлы и Навигация', 'Linux: Права и Пользователи', 'Bash Скриптинг', 'Процессы и Мониторинг', 'Windows / BIOS'],
+                        datasets: [{
+                            label: 'Количество заданий',
+                            data: [7, 6, 6, 3, 3],
+                            backgroundColor: '#6366f1',
+                            borderRadius: 6,
+                            barThickness: 'flex',
+                            maxBarThickness: 40
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#f1f5f9', drawBorder: false }, ticks: { stepSize: 2 } },
+                            x: { grid: { display: false, drawBorder: false }, ticks: { 
+                                maxRotation: 45, minRotation: 45,
+                                callback: function(val) {
+                                    const label = this.getLabelForValue(val);
+                                    return label.length > 15 ? label.substr(0, 15) + '...' : label;
+                                }
+                            }}
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                padding: 12,
+                                callbacks: {
+                                    title: (ctx) => ctx[0].label,
+                                    label: (ctx) => ` Заданий: ${ctx.raw}`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
